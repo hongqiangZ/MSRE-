@@ -1,0 +1,8 @@
+# requirements.txt — 依赖库列表
+numpy
+scipy
+pandas
+matplotlib
+pyyaml
+flask
+streamlit
