@@ -5,8 +5,8 @@ class PointKineticsWithDecay:
         """
         初始化：15群延迟中子组参数
         """
-        self.beta_i = np.array(beta_i)
-        self.lambda_i = np.array(lambda_i)
+        self.beta_i = np.array(beta_i, dtype=float)
+        self.lambda_i = np.array(lambda_i, dtype=float)
         self.Lambda = Lambda
         self.T_c = T_c
         self.tau = tau

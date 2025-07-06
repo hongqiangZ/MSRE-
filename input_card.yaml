@@ -1,58 +1,35 @@
-```yaml
-# input_card.yaml — MSREⅡ 仿真参数配置
-
 meta:
-  # 总仿真时间 (s)
   t_end: 1000
-  # 功率分布因子 (归一化)
   Fp: 1.0
 
 neutronics:
-  # 15 组缓发中子先驱核份额 βᵢ
-  beta_i: [2.11e-4, 1.395e-3, 1.25e-3, 2.514e-3, 7.35e-4,
-           2.684e-4, 5.512e-7, 3.67e-7, 2.514e-6, 3.094e-5,
-           3.481e-6, 3.559e-5, 1.789e-5, 3.54e-5, 2.0e-5]
-  # 15 组缓发中子衰变常数 λᵢ (1/s)
-  lambda_i: [1.24e-2, 3.05e-2, 1.11e-1, 3.01e-1, 1.14,
-             3.02, 6.24e-7, 2.48e-6, 1.59e-5, 6.2e-5,
-             2.67e-4, 7.42e-4, 3.6e-3, 8.85e-3, 2.26e-2]
-  # 平均中子生命周期 Λ (s)
+  beta_i: [2.11e-4, 1.395e-3, 1.25e-3, 2.514e-3, 7.35e-4, 2.684e-4, 5.512e-7, 3.67e-7, 2.514e-6, 3.094e-5, 3.481e-6, 3.559e-5, 1.789e-5, 3.54e-5, 2.0e-5]
+  lambda_i: [1.24e-2, 3.05e-2, 1.11e-1, 3.01e-1, 1.14, 3.02, 6.24e-7, 2.48e-6, 1.59e-5, 6.2e-5, 2.67e-4, 7.42e-4, 3.6e-3, 8.85e-3, 2.26e-2]
   Lambda: 1e-4
-  # 堆芯平均驻留时间 Tₙ (s)
   T_c: 2.0
-  # 主回路循环延迟时间 τ (s)
   tau: 4.0
 
 thermal_1d:
-  # 坐标系：cartesian / cylinder / sphere
   geometry: cylinder
-  # 初始温度 (K)
   init_temp: 900
-  # 导热系数 k (W/m·K)
   k: 10.0
-  # 边界条件类型 [左, 右]
   bc_type: [Dirichlet, Robin]
-  # 边界值：左侧定温，右侧对流 [T_left, [h, T_inf]]
   bc_value: [900, [100, 600]]
 
 thermal_2d:
   geometry: cylinder
   init_temp: 900
   k: 10.0
-  # 径向与轴向边界条件类型
   bc_r: [Symmetry, Robin]
   bc_z: [Dirichlet, Dirichlet]
-  # 径向与轴向边界值
-  bc_val_r: [null, [100, 600]]
+  bc_val_r: [~, [100, 600]]
   bc_val_z: [900, 900]
 
 hydraulics:
-  # 网格与时间步长
   dr: 0.01
   dz: 0.01
   dt: 0.5
   N: 20
-  # 物理常数与初始场
   g: 9.81
   friction: 0.01
   A: 1e-4
@@ -64,34 +41,38 @@ hydraulics:
   H0: 2e5
 
 control:
-  # 目标设定
   T_ref: 950
   n_ref: 1.0
-  # PID 控制器 (温度)
   pid_temp:
     Kp: 2000
     Ti: 50
     Td: 300
     limits: [1000, 20000]
-  # PID 控制器 (反应性)
   pid_rho:
     Kp: 500
     Ti: 100
     Td: 10
     limits: [-0.01, 0.01]
-  # MPC 控制占位参数
   mpc:
     horizon: 15
 
 recorder:
-  # 结果输出路径
   output_dir: outputs/run1
-  # 记录的标量键列表
   scalar_keys: [time, n, T_out, rho, U]
-  # 记录的场数组键列表
   array_keys: [T_core, T_field]
 
 visualization:
-  # 绘图时选取的仿真步
   plot_steps: [0, 50, 100, 200]
-```
+
+control:
+  controller_type: PID
+  pid_params:
+    Kp: 2000
+    Ti: 50
+    Td: 300
+    limits: [1000, 20000]
+  mpc_params:
+    horizon: 15
+    prediction_horizon: 10
+    control_horizon: 5
+  

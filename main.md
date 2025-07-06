@@ -131,11 +131,192 @@ if __name__ == "__main__":
 | 输出统一封装               | 所有导出数据集中于 outputs 子目录下，可后期可视化 |
 
 ---
+---
 
-我可以为你生成该文件写入 `E:\code\MSREⅡ\main.py`，也可以接着帮你创建：
+## 📘 MSREⅡ 仿真主函数结构解析（main.py）
 
-- 📂 `input_card.yaml` 参数输入卡模板；
-- 📂 `outputs/` 模拟输出数据；
-- 🖼️ 可视化脚本和图像文件。
+> 主函数作用：**协调模块初始化 → 读取配置 → 启动仿真循环 → 输出记录与评估**
 
-你是否现在希望我配套写一份简洁清晰的 `input_card.yaml`？或者我们进一步进入 GUI 接口或仿真参数扫描模式？🎛️✨你说了算！
+---
+
+### 🧩 模块导入（主程序所依赖的核心功能）
+
+```python
+from core.input_parser import load_input_card
+from core.neutronics import PointKineticsWithDecay
+from core.hydraulics import update_hydraulics
+from core.thermal_structure.one_d import solve_thermal_structure_1d
+from controllers.manager import ControlManager
+from utils.data_recorder import DataRecorder
+from utils.logger import SimulationLogger
+```
+
+✅ 导入配置解析器、中子动力学模块、水力学更新函数、热传导求解器、控制器管理器、数据记录器与日志器。
+
+---
+
+### 🧠 主函数定义
+
+```python
+def main():
+```
+
+开启仿真主流程。所有初始化、推进、记录逻辑都在此函数中完成。
+
+---
+
+### 📥 配置卡读取与参数提取
+
+```python
+params = load_input_card("input_card.yaml")
+
+meta_cfg = params["meta"]
+neutronics_cfg = params["neutronics"]
+thermal_cfg = params["thermal_1d"]
+hydraulics_cfg = params["hydraulics"]
+control_cfg = params["control"]
+recorder_cfg = params["recorder"]
+```
+
+✅ 加载输入卡并解构各子模块配置，方便后续模块初始化。
+
+---
+
+### ⚛️ 模块初始化
+
+```python
+dt = hydraulics_cfg["dt"]
+pk = PointKineticsWithDecay(**neutronics_cfg, dt=dt)
+control = ControlManager(control_cfg)
+recorder = DataRecorder(recorder_cfg)
+logger = SimulationLogger()
+```
+
+✅ 初始化中子模型、控制器中心、数据记录器与日志器。
+
+---
+
+### ♨️ 物理初始场设定
+
+```python
+T = [thermal_cfg["init_temp"]] * 10
+n = 1.0
+rho = 0.0
+U = 10000
+```
+
+✅ 设置初始温度分布、功率、中子反应性与控制器输出。
+
+---
+
+### 🔁 仿真时间推进循环
+
+```python
+for step in range(int(meta_cfg["t_end"] // dt)):
+```
+
+✅ 使用时间步长 `dt` 从 `0` 迭代到 `t_end`，完成系统动态演化。
+
+---
+
+### 🎛️ 控制器更新
+
+```python
+rho, U = control.update(T_out=T[-1], n=n)
+```
+
+✅ 根据当前温度与功率反馈，输出新的反应性 `rho` 与控制指令 `U`
+
+---
+
+### ⚛️ 中子动力学推进
+
+```python
+n, C = pk.step(rho)
+```
+
+✅ 推进 `n(t)` 与缓发前体浓度 `C(t)` 的演化。
+
+---
+
+### ♨️ 热传导求解（TDMA）
+
+```python
+T = solve_thermal_structure_1d(...)
+```
+
+✅ 使用三对角求解器推进热传导模型。
+
+---
+
+### 💧 水力学状态更新（如启用）
+
+```python
+rho_salt, u, p, H = update_hydraulics(...)
+```
+
+✅ 更新熔盐流体的密度、速度、压强与焓。
+
+---
+
+### 📊 数据记录模块调用
+
+```python
+recorder.record_scalar("T_out", T[-1])
+recorder.record_scalar("n", n)
+recorder.record_array("T_core", T)
+```
+
+✅ 写入关键状态数据以供导出与后处理。
+
+---
+
+### 📝 控制行为日志记录
+
+```python
+logger.log_event(step, rho, U)
+```
+
+✅ 可选记录控制器行为与事件（如 SCRAM 激活）。
+
+---
+
+### 📤 仿真完成后数据导出
+
+```python
+recorder.export_all()
+logger.export("outputs/run1/event_log.txt")
+```
+
+✅ 写入所有记录数据文件，包括 CSV、NPY、TXT 格式。
+
+---
+
+### 📈 控制器性能评估（如已启用）
+
+```python
+from utils.evaluator import ControlEvaluator
+evaluator = ControlEvaluator(t_hist, T_out_list, T_ref)
+results = evaluator.report()
+```
+
+✅ 输出控制器响应质量指标，如稳态误差、超调率、响应时间等。
+
+---
+
+## ✅ 总结功能覆盖
+
+| 模块 | 实现内容 |
+|------|----------|
+| 📥 输入解析 | `load_input_card()` 读取配置 |
+| ⚛️ 动力学 | `pk.step()` 推进中子功率 |
+| ♨️ 热结构 | `solve_thermal_structure_1d()` 更新温度场 |
+| 💧 水力学 | `update_hydraulics()` 更新流体状态 |
+| 🎛️ 控制器 | `ControlManager` 输出 `rho` 与 `U` |
+| 📊 数据记录 | `DataRecorder` 保存输出曲线 |
+| 📝 行为记录 | `SimulationLogger` 写入控制行为日志 |
+| 📈 性能评估 | `ControlEvaluator` 输出控制器表现指标 |
+
+---
+
+是否你希望我将这份 Markdown 写入 `docs/main_structure.md` 或生成 `main.md` 放入 GitHub 项目中？或者我们继续分析某个子模块比如控制器内部 `PID` 或热传导模块的 TDMA 求解器？你一句话我就动手。
